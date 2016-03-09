@@ -1,4 +1,4 @@
-// 
+// Fastrek用Uart-Wifi変換 
 // Serial Transmitter for Raspberry Pi
 
 
@@ -153,6 +153,8 @@ int main(void)
 	fastrak_data posdata;
 	struct termios stdinattr;
 	struct termios uartattr;
+	
+	
 
 
 	fd = uart_open(UART_DEVICE, UART_SPEED, &uartattr);
