@@ -221,7 +221,7 @@ void *thread_uart_comm(void *pParam)
 //			printf("%d\t",word_size);
 			str_data[word_size-2] = '\0';	//CR+LF消去
 
-			printf("%s\n",str_data);
+//			printf("%s\n",str_data);
 			
 //			sdata_split(str_data,&posdata);
 //			sdata_split(test_data,&position_data[0]);
@@ -244,7 +244,8 @@ void *thread_inet_comm(void *pParam)
 	int i,j;
 	int sock;
 	struct sockaddr_in addr[4];
-	double buf[6];
+	double buf[7];
+	buf[0] = 0.;
 
 	while(1)
 	{
@@ -265,6 +266,7 @@ void *thread_inet_comm(void *pParam)
 
 		}
 		usleep(1000);
+		buf[0]++;
 	}
 
 
