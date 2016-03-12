@@ -214,7 +214,6 @@ void *thread_uart_comm(void *pParam)
 	while (1)
 	{
 		word_size = read(fd, &str_data, 100);
-		word_size=10;
 		if(word_size <0)
 		{
 			printf("read error\n");
@@ -231,8 +230,8 @@ void *thread_uart_comm(void *pParam)
 //			printf("%s\n",str_data);
 			
 //			sdata_split(str_data,&posdata);
-//			sdata_split(str_data,position_data);
-			sdata_split(test_data,position_data);
+			sdata_split(str_data,position_data);
+//			sdata_split(test_data,position_data);
 //			for(i=0;i<word_size-2;i++)
 //				printf("%x ",str_data[i]);
 //			printf("\n");
