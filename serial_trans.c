@@ -241,15 +241,31 @@ void *thread_uart_comm(void *pParam)
 void *thread_inet_comm(void *pParam)
 {
 	fastrek_config *config = (fastrek_config *)pParam;
-	int i;
+	int i,j;
+	int sock;
+	struct sockaddr_in addr[4];
+	double buf[6];
+
 	while(1)
 	{
-	printf("%d\n",position_data[0].number);
+		for(i=0;i<4;i++)
+		{
+			sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-	for(i=0;i<6;i++)
-		printf("%f\t",position_data[0].pos[i]);
+			addr[i].sin_family=AF_INET;
+			addr[i].sin_port = htons(config->ip_port[i]);
+			addr[i].sin_addr.s_addr = inet_addr(config->ip_address);
 
-	printf("\n");
-	usleep(1000);
+			for(j=0;j<6;i++)
+				buf[j]=position_data[i].pos[j];
+
+			sendto(sock,buf,sizeof(buf),0,(struct sockaddr *)&addr, sizeof(addr));
+
+			close(sock);
+
+		}
+		usleep(1000);
 	}
+
+
 }
