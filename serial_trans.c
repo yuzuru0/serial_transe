@@ -244,8 +244,7 @@ void *thread_inet_comm(void *pParam)
 	int i,j;
 	int sock;
 	struct sockaddr_in addr[4];
-	double buf[7];
-	buf[0] = 0.;
+	double buf[6];
 
 	while(1)
 	{
@@ -257,16 +256,15 @@ void *thread_inet_comm(void *pParam)
 			addr[i].sin_port = htons(config->ip_port[i]);
 			addr[i].sin_addr.s_addr = inet_addr(config->ip_address);
 
-			for(j=0;j<6;i++)
+			for(j=0;j<6;j++)
 				buf[j]=position_data[i].pos[j];
 
-			sendto(sock,buf,sizeof(buf),0,(struct sockaddr *)&addr, sizeof(addr));
+			sendto(sock,buf,sizeof(buf),0,(struct sockaddr *)&addr[i], sizeof(addr[i]));
 
 			close(sock);
 
 		}
-		usleep(1000);
-		buf[0]++;
+		usleep(100);
 	}
 
 
