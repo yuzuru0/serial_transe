@@ -117,11 +117,12 @@ int sdata_split(char data[],fastrak_data *posdata)
 	char number_data[4];
 	char split_data[6][8];
 	char *endptr;
+	int number;
+	fastrak_data *p;
 
-	posdata->flag =0;
-	
 	strncpy(number_data,data,3);
 	number_data[3] = '\0';
+	
 
 	for(i=0;i<6;i++)
 	{
@@ -133,16 +134,20 @@ int sdata_split(char data[],fastrak_data *posdata)
 //		printf("%s",split_data[i]);
 //	printf(" testdata\n");
 
-	posdata->number = strtol(number_data,&endptr,10);
+	number = strtol(number_data,&endptr,10);
+	p= posdata +(number-1);
+
+	p->flag =0;
+	p->number = strtol(number_data,&endptr,10);
 	if(*endptr !='\0')
 		if(*endptr =='k')
-			posdata->flag =1;
+			p->flag =1;
 		else
 			ret = -1;
 	
 	for(i=0;i<6;i++)
 	{
-		posdata->pos[i] = strtod(split_data[i],&endptr);
+		p->pos[i] = strtod(split_data[i],&endptr);
 		if(*endptr !='\0')
 		{
 			ret = -1;
@@ -188,7 +193,8 @@ void *thread_uart_comm(void *pParam)
 	struct termios stdinattr;
 	struct termios uartattr;
 
-	char test_data[] = "02   12.01   4.15  -5.70-155.01  63.10 -69.68";
+
+	char test_data[] = "01   12.01   4.15  -5.70-155.01  63.10 -69.68";
 
 	if (fd < 0)
 		return ;
@@ -208,6 +214,7 @@ void *thread_uart_comm(void *pParam)
 	while (1)
 	{
 		word_size = read(fd, &str_data, 100);
+		word_size=10;
 		if(word_size <0)
 		{
 			printf("read error\n");
@@ -224,8 +231,8 @@ void *thread_uart_comm(void *pParam)
 //			printf("%s\n",str_data);
 			
 //			sdata_split(str_data,&posdata);
-//			sdata_split(test_data,&position_data[0]);
-			sdata_split(str_data,&position_data[0]);
+//			sdata_split(str_data,position_data);
+			sdata_split(test_data,position_data);
 //			for(i=0;i<word_size-2;i++)
 //				printf("%x ",str_data[i]);
 //			printf("\n");
@@ -246,6 +253,7 @@ void *thread_inet_comm(void *pParam)
 	struct sockaddr_in addr[4];
 	double buf[6];
 
+	sleep(1);
 	while(1)
 	{
 		for(i=0;i<4;i++)
