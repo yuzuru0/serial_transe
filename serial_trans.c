@@ -8,6 +8,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <termios.h>
+#include <pthread.h>
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#include "read_config.h"
 
 #define UART_DEVICE "/dev/ttyAMA0"
 #define UART_SPEED 115200 
@@ -19,6 +27,8 @@ typedef struct
 	double pos[6];
 }fastrak_data;
 
+fastrak_data position_data[4];
+
 #define	POS_X	0
 #define POS_Y	1
 #define POS_Z	2
@@ -26,6 +36,8 @@ typedef struct
 #define POS_B	4
 #define POS_C	5
 
+void *thread_uart_comm(void *pParam);
+void *thread_inet_comm(void *pParam);
 
 int uart_open(char const *device, int bps, struct termios *saveattr)
 {
@@ -132,7 +144,9 @@ int sdata_split(char data[],fastrak_data *posdata)
 	{
 		posdata->pos[i] = strtod(split_data[i],&endptr);
 		if(*endptr !='\0')
+		{
 			ret = -1;
+		}
 	}
 /*
 	printf("%d%d ",posdata->number,posdata->flag);
@@ -145,6 +159,26 @@ int sdata_split(char data[],fastrak_data *posdata)
 
 int main(void)
 {
+
+	fastrek_config config;
+	pthread_t thread_uart, thread_inet;
+
+	if(read_config(&config)!=0)
+		printf("config error\n");
+		
+	pthread_create(&thread_uart, NULL, thread_uart_comm, (void*)&config);
+	pthread_create(&thread_inet, NULL, thread_inet_comm, (void*)&config);
+
+	pthread_join(thread_uart,NULL);
+	pthread_join(thread_inet,NULL);
+
+
+	return 0;
+}
+
+void *thread_uart_comm(void *pParam)
+{
+	fastrek_config *config = (fastrek_config *)pParam;
 	int fd;
 	char c='P';
 	char str_data[100];
@@ -153,15 +187,14 @@ int main(void)
 	fastrak_data posdata;
 	struct termios stdinattr;
 	struct termios uartattr;
-	
-	
 
+	char test_data[] = "02   12.01   4.15  -5.70-155.01  63.10 -69.68";
 
-	fd = uart_open(UART_DEVICE, UART_SPEED, &uartattr);
 	if (fd < 0)
-		return 1;
+		return ;
 
 	// set to non canonical mode for stdin
+	fd = uart_open(UART_DEVICE, UART_SPEED, &uartattr);
 	tcgetattr(0, &stdinattr);
 	stdinattr.c_lflag &= ~ICANON;
 	stdinattr.c_lflag &= ~ECHO;
@@ -190,7 +223,9 @@ int main(void)
 
 			printf("%s\n",str_data);
 			
-			sdata_split(str_data,&posdata);
+//			sdata_split(str_data,&posdata);
+//			sdata_split(test_data,&position_data[0]);
+			sdata_split(str_data,&position_data[0]);
 //			for(i=0;i<word_size-2;i++)
 //				printf("%x ",str_data[i]);
 //			printf("\n");
@@ -202,6 +237,19 @@ int main(void)
 
 	uart_close(fd, &uartattr);
 
-	return 0;
 }
+void *thread_inet_comm(void *pParam)
+{
+	fastrek_config *config = (fastrek_config *)pParam;
+	int i;
+	while(1)
+	{
+	printf("%d\n",position_data[0].number);
 
+	for(i=0;i<6;i++)
+		printf("%f\t",position_data[0].pos[i]);
+
+	printf("\n");
+	usleep(1000);
+	}
+}
