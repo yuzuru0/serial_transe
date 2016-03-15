@@ -29,7 +29,7 @@ int read_config(fastrek_config *config)
 	}
 
 
-	fscanf(fp,"%1s[01]]",input);
+	fscanf(fp,"%1s[012]",input);
 	fscanf(fp,"%*[^\n]");
 	if(input[0] == '0' )
 	{
@@ -54,7 +54,7 @@ int read_config(fastrek_config *config)
 	}
 
 
-	fscanf(fp,"%1s[01]]",input);
+	fscanf(fp,"%1s[01]",input);
 	fscanf(fp,"%*[^\n]");
 	if(input[0] == '0' )
 	{
@@ -62,7 +62,7 @@ int read_config(fastrek_config *config)
 	}
 	else if(input[0] == '1')
 	{
-		config->unit_of_length=UNIT_RAD;
+		config->unit_of_angle=UNIT_RAD;
 	}
 	else
 	{
