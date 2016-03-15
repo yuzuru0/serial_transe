@@ -8,12 +8,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <termios.h>
-#include <pthread.h>
+#include <pthread.h>\
 
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+#include <math.h> //using m_pi
 
 #include "read_config.h"
 
@@ -35,6 +37,11 @@ fastrak_data position_data[4];
 #define POS_A	3
 #define POS_B	4
 #define POS_C	5
+
+#define INCH_TO_METER 	(1/0.0254)
+#define INCH_TO_MM	  	(1/25.4)
+#define INCH_TO_CM	  	(1/2.54)
+#define DEG_TO_RAD		(M_PI/180)
 
 void *thread_uart_comm(void *pParam);
 void *thread_inet_comm(void *pParam);
@@ -188,10 +195,25 @@ void *thread_uart_comm(void *pParam)
 	char c='P';
 	char str_data[100];
 	int word_size;
-	int i;
+	int i,j;
 	fastrak_data posdata;
 	struct termios stdinattr;
 	struct termios uartattr;
+	double pos_unit_conv=1.;		//デフォルトはインチ
+	double angle_unit_conv=1.;		//デフォルトは度
+
+	if(config->unit_of_length == UNIT_METER)
+		pos_unit_conv = INCH_TO_METER;
+	
+	if(config->unit_of_length == UNIT_CM)
+		pos_unit_conv = INCH_TO_CM;
+	
+	if(config->unit_of_length == UNIT_MM)
+		pos_unit_conv = INCH_TO_MM;
+
+	if(config->unit_of_length == UNIT_RAD)
+		angle_unit_conv= DEG_TO_RAD;
+	
 
 
 	char test_data[] = "01   12.01   4.15  -5.70-155.01  63.10 -69.68";
@@ -231,6 +253,17 @@ void *thread_uart_comm(void *pParam)
 			
 //			sdata_split(str_data,&posdata);
 			sdata_split(str_data,position_data);
+
+			for(i=0;i<4;i++)
+			{
+				for(j=0;j<3;j++)
+					position_data[i].pos[j] = position_data[i].pos[j] * pos_unit_conv;
+
+				for(j=4;j<6;j++)
+					position_data[i].pos[j] = position_data[i].pos[j] * angle_unit_conv;
+			}
+
+
 //			sdata_split(test_data,position_data);
 //			for(i=0;i<word_size-2;i++)
 //				printf("%x ",str_data[i]);

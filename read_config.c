@@ -14,7 +14,8 @@ int read_config(fastrek_config *config)
 	if(fp == NULL)
 	{
 		printf("Configuration file not found. Using dafault value\n");
-		config->unit_of_length = UNIT_M;
+		config->unit_of_length = UNIT_METER;
+		config->unit_of_angle = UNIT_DEG;
 		config->ip_address_byte[0] = 192;
 		config->ip_address_byte[1] = 168;
 		config->ip_address_byte[2] = 0;
@@ -27,6 +28,7 @@ int read_config(fastrek_config *config)
 		return 1;
 	}
 
+
 	fscanf(fp,"%1s[01]]",input);
 	fscanf(fp,"%*[^\n]");
 	if(input[0] == '0' )
@@ -35,15 +37,36 @@ int read_config(fastrek_config *config)
 	}
 	else if(input[0] == '1')
 	{
-		config->unit_of_length=UNIT_CM;
+		config->unit_of_length=UNIT_METER;
 	}
 	else if (input[0] == '2')
 	{
-		config->unit_of_length=UNIT_M;
+		config->unit_of_length=UNIT_CM;
+	}
+	else if (input[0] == '3')
+	{
+		config->unit_of_length=UNIT_MM;
 	}
 	else
 	{
-		printf("Unknown error(can not detamine the unit)\n");
+		printf("Unknown error(can not detamine the unit of length)\n");
+		return -1;
+	}
+
+
+	fscanf(fp,"%1s[01]]",input);
+	fscanf(fp,"%*[^\n]");
+	if(input[0] == '0' )
+	{
+		config->unit_of_angle=UNIT_DEG;
+	}
+	else if(input[0] == '1')
+	{
+		config->unit_of_length=UNIT_RAD;
+	}
+	else
+	{
+		printf("Unknown error(can not detamine the unit of angle)\n");
 		return -1;
 	}
 
