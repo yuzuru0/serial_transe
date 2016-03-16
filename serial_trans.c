@@ -285,7 +285,7 @@ void *thread_inet_comm(void *pParam)
 	double buf[6];
 
 	sleep(1);
-	while(1)
+/*	while(1)
 	{
 		for(i=0;i<4;i++)
 		{
@@ -308,6 +308,19 @@ void *thread_inet_comm(void *pParam)
 		}
 		usleep(100);
 	}
+*/
 
+	while(1)
+	{
+		for(i=0;i<4;i++)
+		{
+			printf("%d: ",i);
+			for(j=0;j<6;j++)
+				printf("%f ",position_data[i].pos[j]);
+			printf("\n");
+		}
+		printf("\n\n");
+		sleep(1);
+	}
 
 }
