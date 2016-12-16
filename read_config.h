@@ -13,7 +13,7 @@
 #define UNIT_RAD 1
 #define NO_PORT_EXIST -1
 
-#define CONF_FILE "fastrek.conf"
+#define CONF_FILE "/etc/fastrek.conf"
 
 typedef struct
 {
