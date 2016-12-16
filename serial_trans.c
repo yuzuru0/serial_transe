@@ -120,51 +120,74 @@ void uart_close(int fd, struct termios *saveattr)
 
 int sdata_split(char data[],fastrak_data *posdata)
 {
-	int ret = 0,i;
+	int ret = 0,i,j;
+	char common_data[4][50];
 	char number_data[4];
 	char split_data[6][8];
 	char *endptr;
 	int number;
 	fastrak_data *p;
-
-	strncpy(number_data,data,3);
-	number_data[3] = '\0';
+	char *delimit="\r\n";
+	char *split_point;
+	int sensor_num=0;
 	
-
-	for(i=0;i<6;i++)
+	split_point=strtok(data,delimit);
+	while(split_point != NULL)
 	{
-		strncpy(split_data[i],data + 3 +i*7 ,7);
-		split_data[i][7] = '\0'; 
+		strcpy(common_data[sensor_num],split_point);
+		split_point = strtok(NULL,delimit);
+		sensor_num++;
 	}
-//	printf("%s",number_data);
-//	for(i=0;i<6;i++)
-//		printf("%s",split_data[i]);
-//	printf(" testdata\n");
 
-	number = strtol(number_data,&endptr,10);
-	p= posdata +(number-1);
-
-	p->flag =0;
-	p->number = strtol(number_data,&endptr,10);
-	if(*endptr !='\0')
-		if(*endptr =='k')
-			p->flag =1;
-		else
-			ret = -1;
+	printf("number %d\n",sensor_num);	
+	for(i=0;i<sensor_num;i++)
+		printf("**%s**\n",common_data[i]);
 	
-	for(i=0;i<6;i++)
+
+	for(j=0;j<sensor_num;j++)
 	{
-		p->pos[i] = strtod(split_data[i],&endptr);
-		if(*endptr !='\0')
+
+		strncpy(number_data,common_data[j],3);
+		number_data[3] = '\0';
+	
+
+		for(i=0;i<6;i++)
 		{
-			ret = -1;
+			strncpy(split_data[i],common_data[j] + 3 +i*7 ,7);
+			split_data[i][7] = '\0'; 
+		}
+/*
+		printf("%s",number_data);
+		for(i=0;i<6;i++)
+			printf("%s",split_data[i]);
+		printf(" testdata\n");
+*/
+		number = strtol(number_data,&endptr,10);
+		p= posdata +(number-1);
+
+		p->flag =0;
+		p->number = strtol(number_data,&endptr,10);
+		if(*endptr !='\0')
+			if(*endptr =='k')
+				p->flag =1;
+			else
+				ret = -1;
+
+	
+		for(i=0;i<6;i++)
+		{
+			p->pos[i] = strtod(split_data[i],&endptr);
+			if(*endptr !='\0')
+			{
+				ret = -1;
+			}
 		}
 	}
 /*
-	printf("%d%d ",posdata->number,posdata->flag);
-	for(i=0;i<6;i++)
-		printf("%5.2f ",posdata->pos[i]);
-	printf(" testdata \n");
+		printf("%d%d ",posdata->number,posdata->flag);
+		for(i=0;i<6;i++)
+			printf("%5.2f ",posdata->pos[i]);
+		printf(" testdata \n");
 */
 	return ret;
 }
@@ -177,7 +200,7 @@ int main(void)
 
 	if(read_config(&config)!=0)
 		printf("config error\n");
-		
+
 	pthread_create(&thread_uart, NULL, thread_uart_comm, (void*)&config);
 	pthread_create(&thread_inet, NULL, thread_inet_comm, (void*)&config);
 
@@ -193,7 +216,7 @@ void *thread_uart_comm(void *pParam)
 	fastrek_config *config = (fastrek_config *)pParam;
 	int fd;
 	char c='P';
-	char str_data[100];
+	char str_data[256];
 	int word_size;
 	int i,j;
 	fastrak_data posdata[4];
@@ -234,7 +257,7 @@ void *thread_uart_comm(void *pParam)
 	usleep(500000);
 	while (1)
 	{
-		word_size = read(fd, &str_data, 100);
+		word_size = read(fd, &str_data, 256);
 		if(word_size <0)
 		{
 			printf("read error\n");
@@ -246,15 +269,25 @@ void *thread_uart_comm(void *pParam)
 		else
 		{
 //			printf("%d\t",word_size);
-			str_data[word_size-2] = '\0';	//CR+LF消去
+//			str_data[word_size-2] = '\0';	//CR+LF消去
 
 //			printf("%s\n",str_data);
 			
 //			sdata_split(str_data,&posdata);
 			sdata_split(str_data,posdata);
-
+/*
 			for(i=0;i<4;i++)
 			{
+				printf("%d\t",posdata[i].number);
+				for(j=0;j<6;j++)
+					printf("%f\t",posdata[i].pos[j]);
+				printf("\n");
+			}
+*/
+			for(i=0;i<4;i++)
+			{
+				position_data[i].number=posdata[i].number;
+
 				for(j=0;j<3;j++)
 					position_data[i].pos[j] = posdata[i].pos[j] * pos_unit_conv;
 
@@ -289,22 +322,26 @@ void *thread_inet_comm(void *pParam)
 	{
 		for(i=0;i<4;i++)
 		{
-			if(config->ip_port[i] >0)
+			if(position_data[i].number !=0 && config->ip_port[i] >0)
 			{
-				sock = socket(AF_INET, SOCK_DGRAM, 0);
+				if(config->ip_port[i] >0)
+				{
+					sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-				addr[i].sin_family=AF_INET;
-				addr[i].sin_port = htons(config->ip_port[i]);
-				addr[i].sin_addr.s_addr = inet_addr(config->ip_address);
+					addr[i].sin_family=AF_INET;
+					addr[i].sin_port = htons(config->ip_port[i]);
+					addr[i].sin_addr.s_addr = inet_addr(config->ip_address);
 
-				for(j=0;j<6;j++)
-					buf[j]=position_data[i].pos[j];
 
-				sendto(sock,buf,sizeof(buf),0,(struct sockaddr *)&addr[i], sizeof(addr[i]));
+					for(j=0;j<6;j++)
+						buf[j]=position_data[i].pos[j];
 
-				close(sock);
-			}
+					sendto(sock,buf,sizeof(buf),0,(struct sockaddr *)&addr[i], sizeof(addr[i]));
 
+					close(sock);
+				}
+
+			}	
 		}
 		usleep(100);
 	}

@@ -29,7 +29,7 @@ int read_config(fastrek_config *config)
 	}
 
 
-	fscanf(fp,"%1s[012]",input);
+	fscanf(fp,"%1s[0123]",input);
 	fscanf(fp,"%*[^\n]");
 	if(input[0] == '0' )
 	{
