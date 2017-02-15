@@ -22,6 +22,9 @@
 #define UART_DEVICE "/dev/ttyAMA0"
 #define UART_SPEED 115200 
 
+#define PWR_LED	"/sys/class/gpio/gpio23/value"
+#define ERR_LED	"/sys/class/gpio/gpio24/value"
+
 typedef struct
 {
 	int number;
@@ -30,6 +33,7 @@ typedef struct
 }fastrak_data;
 
 fastrak_data position_data[4];
+int data_update=0;
 
 #define	POS_X	0
 #define POS_Y	1
@@ -139,9 +143,9 @@ int sdata_split(char data[],fastrak_data *posdata)
 		sensor_num++;
 	}
 
-	printf("number %d\n",sensor_num);	
-	for(i=0;i<sensor_num;i++)
-		printf("**%s**\n",common_data[i]);
+//	printf("number %d\n",sensor_num);	
+//	for(i=0;i<sensor_num;i++)
+//		printf("**%s**\n",common_data[1]);
 	
 
 	for(j=0;j<sensor_num;j++)
@@ -197,6 +201,16 @@ int main(void)
 
 	fastrek_config config;
 	pthread_t thread_uart, thread_inet;
+	FILE *fp;
+
+
+	//プログラム開始LEDオン
+	fp = fopen(PWR_LED,"wt");
+	if(fp==NULL)
+		exit(-2);
+	fprintf(fp,"0");
+	fclose(fp);
+
 
 	if(read_config(&config)!=0)
 		printf("config error\n");
@@ -219,11 +233,14 @@ void *thread_uart_comm(void *pParam)
 	char str_data[256];
 	int word_size;
 	int i,j;
+	int error_wait=1;
+	int seaq_number=0;
 	fastrak_data posdata[4];
 	struct termios stdinattr;
 	struct termios uartattr;
 	double pos_unit_conv=1.;		//デフォルトはインチ
 	double angle_unit_conv=1.;		//デフォルトは度
+	FILE *fp;
 
 	if(config->unit_of_length == UNIT_METER)
 		pos_unit_conv = INCH_TO_METER;
@@ -263,11 +280,15 @@ void *thread_uart_comm(void *pParam)
 			printf("read error\n");
 			tcflush(fd,TCIFLUSH);	//エラー時に受信バッファクリア
 			tcflush(fd,TCOFLUSH);	//エラー時に送信バッファクリア
-			sleep(5);
+			sleep(10);
+			error_wait++;
 			write(fd, &c, 1);
+			seaq_number=0;
 		}
 		else
 		{
+			seaq_number++;
+			error_wait=1;
 //			printf("%d\t",word_size);
 //			str_data[word_size-2] = '\0';	//CR+LF消去
 
@@ -300,9 +321,30 @@ void *thread_uart_comm(void *pParam)
 //			for(i=0;i<word_size-2;i++)
 //				printf("%x ",str_data[i]);
 //			printf("\n");
+		data_update=1;
 		write(fd, &c, 1);
 		}
-		sleep(1);
+		
+		//エラー時にLED点灯
+		if(seaq_number==0)
+		{
+			fp=fopen(ERR_LED,"wt");
+			if(fp==NULL)
+				exit(-3);
+			
+			fprintf(fp,"0");
+			fclose(fp);
+		}	
+		else if(seaq_number==1)
+		{
+			fp=fopen(ERR_LED,"wt");
+			if(fp==NULL)
+				exit(-3);
+			
+			fprintf(fp,"1");
+			fclose(fp);
+		}	
+		usleep(60000);
 
 	}
 
@@ -319,6 +361,8 @@ void *thread_inet_comm(void *pParam)
 
 	sleep(1);
 	while(1)
+	{
+	if(data_update ==1)
 	{
 		for(i=0;i<4;i++)
 		{
@@ -339,11 +383,14 @@ void *thread_inet_comm(void *pParam)
 					sendto(sock,buf,sizeof(buf),0,(struct sockaddr *)&addr[i], sizeof(addr[i]));
 
 					close(sock);
+					data_update=0;
 				}
 
 			}	
 		}
 		usleep(100);
+	}
+	usleep(100);
 	}
 
 
