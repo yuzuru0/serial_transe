@@ -25,6 +25,8 @@
 #define PWR_LED	"/sys/class/gpio/gpio23/value"
 #define ERR_LED	"/sys/class/gpio/gpio24/value"
 
+int err_flag=0;
+
 typedef struct
 {
 	int number;
@@ -49,6 +51,7 @@ int data_update=0;
 
 void *thread_uart_comm(void *pParam);
 void *thread_inet_comm(void *pParam);
+void *thread_led_ctrl(void *pParam);
 
 int uart_open(char const *device, int bps, struct termios *saveattr)
 {
@@ -200,7 +203,7 @@ int main(void)
 {
 
 	fastrek_config config;
-	pthread_t thread_uart, thread_inet;
+	pthread_t thread_uart, thread_inet,thread_led;
 	FILE *fp;
 
 
@@ -217,6 +220,7 @@ int main(void)
 
 	pthread_create(&thread_uart, NULL, thread_uart_comm, (void*)&config);
 	pthread_create(&thread_inet, NULL, thread_inet_comm, (void*)&config);
+	pthread_create(&thread_led, NULL, thread_led_ctrl, (void*)&config);
 
 	pthread_join(thread_uart,NULL);
 	pthread_join(thread_inet,NULL);
@@ -280,15 +284,17 @@ void *thread_uart_comm(void *pParam)
 			printf("read error\n");
 			tcflush(fd,TCIFLUSH);	//エラー時に受信バッファクリア
 			tcflush(fd,TCOFLUSH);	//エラー時に送信バッファクリア
+			seaq_number=0;
+			err_flag =1;
 			sleep(10);
 			error_wait++;
 			write(fd, &c, 1);
-			seaq_number=0;
 		}
 		else
 		{
 			seaq_number++;
 			error_wait=1;
+			err_flag =0;
 //			printf("%d\t",word_size);
 //			str_data[word_size-2] = '\0';	//CR+LF消去
 
@@ -325,25 +331,6 @@ void *thread_uart_comm(void *pParam)
 		write(fd, &c, 1);
 		}
 		
-		//エラー時にLED点灯
-		if(seaq_number==0)
-		{
-			fp=fopen(ERR_LED,"wt");
-			if(fp==NULL)
-				exit(-3);
-			
-			fprintf(fp,"0");
-			fclose(fp);
-		}	
-		else if(seaq_number==1)
-		{
-			fp=fopen(ERR_LED,"wt");
-			if(fp==NULL)
-				exit(-3);
-			
-			fprintf(fp,"1");
-			fclose(fp);
-		}	
 		usleep(60000);
 
 	}
@@ -395,3 +382,34 @@ void *thread_inet_comm(void *pParam)
 
 
 }
+
+void *thread_led_ctrl(void *pParam)
+{
+	int led_status =0;
+	FILE *fp;
+
+	//プログラム開始LEDオン
+	fp = fopen(PWR_LED,"wt");
+	if(fp==NULL)
+		exit(-2);
+	fprintf(fp,"0");
+	fclose(fp);
+
+	while(1)
+	{
+		if(err_flag != led_status)
+		{
+
+			fp=fopen(ERR_LED,"wt");
+			if(fp==NULL)
+				exit(-3);
+		
+			fprintf(fp,"%d",!err_flag);	//0で点灯
+			fclose(fp);
+			led_status=err_flag;
+		}
+	
+		usleep(500000);
+	}
+}
+
